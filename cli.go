@@ -7,7 +7,8 @@ import (
 	"io"
 	"os"
 	"strings"
-	"unicode/utf8"
+
+	"github.com/mohira/mojimoji/statement"
 )
 
 const (
@@ -54,8 +55,16 @@ func (c CLI) Run(args []string) int {
 			continue
 		}
 
-		for _, statement := range limitOverStatements(line) {
-			msg := fmt.Sprintf("L%d(%d): %s\n", no, utf8.RuneCountInString(statement), statement)
+		ngStatements, err := statement.NewNgStatements(line)
+		if err != nil {
+			if _, err := fmt.Fprint(c.errStream, err); err != nil {
+				return ExitCodeSomeError
+			}
+			return ExitCodeSomeError
+		}
+
+		for _, s := range ngStatements {
+			msg := fmt.Sprintf("L%02d(+%d): %s\n", no, s.OverCount(), s.String())
 
 			if _, err := fmt.Fprint(c.outStream, msg); err != nil {
 				return ExitCodeSomeError
@@ -64,20 +73,4 @@ func (c CLI) Run(args []string) int {
 	}
 
 	return ExitCodeOK
-}
-
-func limitOverStatements(s string) []string {
-	const CharacterLimit int = 35
-
-	var result []string
-
-	for _, statement := range strings.Split(s, "。") {
-		statement += "。"
-		count := utf8.RuneCountInString(statement)
-		if count > CharacterLimit {
-			result = append(result, statement)
-		}
-	}
-
-	return result
 }
