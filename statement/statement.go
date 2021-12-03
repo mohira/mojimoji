@@ -3,6 +3,7 @@ package statement
 import (
 	"errors"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -24,18 +25,37 @@ func (s *NgStatement) String() string {
 }
 
 func (s *NgStatement) OverCount() int {
-	return utf8.RuneCountInString(s.body) - CharacterLimit
+	return Count(s.body) - CharacterLimit
 }
 
 type NgStatements []NgStatement
+
+// Count 文字数を数える
+// ただし、英数字やスペースは0.5文字換算、小数点は切り上げる。
+func Count(s string) int {
+	count := 0
+
+	for _, c := range s {
+		isSymbol := c == '(' || c == ')' || c == '_'
+		if unicode.IsDigit(c) ||
+			unicode.IsLower(c) ||
+			unicode.IsUpper(c) ||
+			unicode.IsSpace(c) ||
+			isSymbol {
+			count++
+		}
+	}
+
+	return utf8.RuneCountInString(s) - count/2
+}
 
 func NewNgStatements(line string) (NgStatements, error) {
 	var result NgStatements
 
 	for _, statement := range strings.Split(line, "。") {
 		statement += "。"
-		count := utf8.RuneCountInString(statement)
-		if count > CharacterLimit {
+
+		if Count(statement) > CharacterLimit {
 			s, err := NewNgStatement(statement)
 			if err != nil {
 				return nil, err
